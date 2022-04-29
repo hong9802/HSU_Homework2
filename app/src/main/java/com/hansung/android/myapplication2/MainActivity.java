@@ -42,4 +42,5 @@ public class MainActivity extends AppCompatActivity {
 }
 /*
 오버플로우 메뉴 처리 : https://kwanulee.github.io/AndroidProgramming/navigation/actionbar.html
+AppBar Title 변경 : https://milkissboy.tistory.com/24
  */
