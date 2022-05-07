@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TableLayout
+        android:stretchColumns="*"
+        android:id="@+id/fixed_rows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_horizontal">
+            <TableLayout
+                android:stretchColumns="1,2,3,4,5,6,7"
+                android:id="@+id/scrollable_rows"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>
