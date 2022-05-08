@@ -5,6 +5,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
+import java.util.Calendar;
+
 public class MonthViewFragmentStateAdapter extends FragmentStateAdapter {
 
     private static int NUM_ITEMS=100;
@@ -51,4 +53,13 @@ public class MonthViewFragmentStateAdapter extends FragmentStateAdapter {
     public int getItemCount() {
         return NUM_ITEMS;
     }
+    /*
+    public Calendar getCurrentMonth(int position){
+        MonthViewFragment Today = new MonthViewFragment();
+        Today.newInstance(position - 50);
+        Calendar today = (Calendar)Today;
+        int month = today.get(Calendar.MONTH);
+        int week = today.get(Calendar.WEEK_OF_MONTH);
+        return today;
+    }*/
 }
