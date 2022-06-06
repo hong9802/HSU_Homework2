@@ -2,8 +2,9 @@ package com.hansung.android.myapplication2;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
+import android.text.InputType;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -19,43 +20,41 @@ import android.widget.TableRow.LayoutParams;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
 
-import com.hansung.android.myapplication2.R;
+import org.w3c.dom.Text;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Iterator;
 
-public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlobalLayoutListener{
+public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlobalLayoutListener {
     private Context context;
     private final float MIN_TEXT_HEIGHT = 50f;
     private final Calendar offset;
     private LinearLayout main_view;
     private TableLayout fixed_rows;
     private TextView fixed_margin_view;
-    private boolean day_isClicked;
-    private boolean hour_isClicked;
-    private View already_click_day;
-    private View already_click_hour;
+
+    private View clickedDayView = null;
+    private View clickedHourView = null;
+
     private ArrayList<View> day_views;
 
-    public CalendarFragment(){
-        this(null, Calendar.getInstance());
-    }
+    private ArrayList<TextView> titles = new ArrayList<TextView>();
+    private ArrayList<TableRow> dayRows = new ArrayList<>();
+    private ArrayList<TextView> contents = new ArrayList<TextView>();
 
-    public CalendarFragment(Context context){
-        this(context, Calendar.getInstance());
-    }
+    private ICalendarUsage calendarUsage;
 
-    public CalendarFragment(Context context, Calendar calendar){
+    private HashMap<TextView, Schedule> data = new HashMap<>();
+
+    public CalendarFragment(Context context, Calendar calendar, ICalendarUsage usage) {
         this.context = context;
         this.offset = (Calendar) calendar.clone();
-        already_click_day = null;
-        already_click_hour = null;
-        day_isClicked = false;
-        hour_isClicked = false;
+        calendarUsage = usage;
     }
 
     @Override
@@ -65,36 +64,68 @@ public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlo
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        CalendarUtility calendarUtility = new CalendarUtility();
+        if (data != null) {
+            Iterator<TextView> iter = data.keySet().iterator();
+            while (iter.hasNext()) {
+                TextView tv = iter.next();
+                tv.setText("");
+            }
+            data.clear();
+        }
+        for (int i = 0; i < 7; i++) {
+            Calendar calendar = (Calendar) this.offset.clone();
+            calendar.set(Calendar.DAY_OF_WEEK, i + 1);
+            ArrayList<Schedule> schedules = ScheduleManager.getInstance().getScheduleOfDay(calendar);
+            for(int j = 0; j < schedules.size(); j++) {
+                Schedule schedule = schedules.get(j);
+                Calendar t = calendarUtility.fromTimeString(schedule.getStartTime());
+                int hour = t.get(Calendar.HOUR_OF_DAY);
+                TableRow row = dayRows.get(hour);
+                TextView tv = (TextView) row.getVirtualChildAt(i + 1);
+                tv.setText(schedule.getTitle());
+                data.put(tv, schedule);
+            }
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         day_views = new ArrayList<>();
-        this.main_view =(LinearLayout)inflater.inflate(R.layout.fragment_week_calendar,container,false);
+        this.main_view = (LinearLayout) inflater.inflate(R.layout.fragment_week_calendar, container, false);
         this.fixed_rows = this.main_view.findViewById(R.id.fixed_rows);
         TableLayout scrollable_rows = this.main_view.findViewById(R.id.scrollable_rows);
 
-        TableRow row;
-        for(int i = 0; i < 24; i++) {
-            row = new TableRow(this.context);
+        for (int i = 0; i < 24; i++) {
+            TableRow row = new TableRow(this.context);
             fixed_margin_view = new TextView(this.context);
             fixed_margin_view.setText(String.valueOf(i));
-            fixed_margin_view.setHeight((int)dpToPx(context, MIN_TEXT_HEIGHT));
+            fixed_margin_view.setHeight((int) dpToPx(context, MIN_TEXT_HEIGHT));
             fixed_margin_view.setTextColor(Color.BLACK);
             fixed_margin_view.setBackgroundColor(Color.WHITE);
             row.addView(fixed_margin_view);
             row.setGravity(Gravity.CENTER);
             row.setBackgroundColor(Color.WHITE);
-            for(int j =0;j<7;j++){
-                row.addView(makeTableRowWithText(j));
+
+            for (int j = 0; j < 7; j++) {
+                Calendar calendar = (Calendar) this.offset.clone();
+                calendar.set(Calendar.DAY_OF_WEEK, j + 1);
+
+                row.addView(makeTableRowWithText(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DATE), j, i));
             }
             scrollable_rows.addView(row);
+            dayRows.add(row);
         }
 
         //header (fixed vertically)
-        row = new TableRow(this.context);
+        TableRow row = new TableRow(this.context);
         row.setLayoutParams(new TableRow.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 
         row.setGravity(Gravity.CENTER);
         row.setBackgroundColor(Color.WHITE);
-        for(int i = 0; i < 7; i++) {
+        for (int i = 0; i < 7; i++) {
             Calendar calendar = (Calendar) this.offset.clone();
 
             calendar.set(Calendar.DAY_OF_WEEK, i + 1);
@@ -114,10 +145,10 @@ public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlo
 
         row.setGravity(Gravity.CENTER);
         row.setBackgroundColor(Color.WHITE);
-        for(int i = 0; i < 7; i++) {
+        for (int i = 0; i < 7; i++) {
             Calendar calendar = (Calendar) this.offset.clone();
             calendar.set(Calendar.DAY_OF_WEEK, i + 1);
-            TextView view = makeTableTitle(String.valueOf(calendar.get(Calendar.DATE)));
+            TextView view = makeTableTitle(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DATE));
             row.addView(view);
             day_views.add(view);
         }
@@ -126,80 +157,93 @@ public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlo
         return this.main_view;
     }
 
-
-    public TextView makeTableTitle(String text) {
+    public TextView makeTableTitle(int year, int month, int day) {
         TextView recyclableTextView = new TextView(this.context);
-        recyclableTextView.setText(text);
+        recyclableTextView.setText(day + "");
         recyclableTextView.setTextColor(Color.BLACK);
         recyclableTextView.setGravity(Gravity.CENTER);
-
         recyclableTextView.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
         float height = dpToPx(this.context, MIN_TEXT_HEIGHT);
-        recyclableTextView.setMinHeight((int)height);
+
+        recyclableTextView.setMinHeight((int) height);
         recyclableTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 //아무것도 안눌린 상태
-                if(!day_isClicked) {
+
+                if (clickedDayView == null) {
                     view.setBackgroundColor(Color.parseColor("#FF00DBC4"));
-                    day_isClicked = !day_isClicked;
-                    already_click_day = view;
-                }else{
-                    if(already_click_day != view){
-                        if(already_click_day != null) {
-                            already_click_day.setBackgroundColor(Color.WHITE);
-                        }
+                    clickedDayView = view;
+                    calendarUsage.daySelected(year, month, day);
+                } else {
+                    if (clickedDayView != view) {
                         view.setBackgroundColor(Color.parseColor("#FF00DBC4"));
-                        already_click_day = view;
-                    }else{
+                        clickedDayView.setBackgroundColor(Color.WHITE);
+                        clickedDayView = view;
+                        calendarUsage.daySelected(year, month, day);
+                    } else {
+                        clickedDayView = null;
                         view.setBackgroundColor(Color.WHITE);
-                        day_isClicked = !day_isClicked;
-                        already_click_day = null;
+                        calendarUsage.dayDeselected();
                     }
+
                 }
             }
         });
 
+        titles.add(recyclableTextView);
+
         return recyclableTextView;
     }
 
-    public TextView makeTableRowWithText(final int position) {
+    public TextView makeTableRowWithText(final int year, final int month, final int day,
+                                         final int x, final int y) {
         TextView recyclableTextView = new TextView(this.context);
         recyclableTextView.setText(" ");
         recyclableTextView.setTextColor(Color.BLACK);
-        recyclableTextView.setGravity(Gravity.CENTER);
+        recyclableTextView.setSingleLine(true);
+        recyclableTextView.setTextSize(12);
+        recyclableTextView.setEllipsize(TextUtils.TruncateAt.END);
 
-        recyclableTextView.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
+        recyclableTextView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         float height = dpToPx(this.context, MIN_TEXT_HEIGHT);
-        recyclableTextView.setMinHeight((int)height);
+
+        recyclableTextView.setMinHeight((int) height);
         recyclableTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(!hour_isClicked) {
+                TextView tv = (TextView) view;
+                Schedule schedule = data.get(tv);
+                if (schedule != null) {
+                    calendarUsage.showDetail(schedule);
+                    return;
+                }
+                if (clickedHourView == null) {
                     view.setBackgroundResource(R.drawable.clicked_edge_view);
-                    hour_isClicked = !hour_isClicked;
-                    already_click_hour = view;
-                    day_views.get(position).performClick();
-                    Toast.makeText(context, "position=" + position, Toast.LENGTH_SHORT).show();
-                }else{
-                    if(already_click_hour != view){
-                        if(already_click_hour != null) {
-                            already_click_hour.setBackgroundResource(R.drawable.edge_view);
-                            day_views.get(position).performClick();
-                            Toast.makeText(context, "position=" + position, Toast.LENGTH_SHORT).show();
-                        }
+                    clickedHourView = view;
+                    if (clickedDayView == null || clickedDayView != day_views.get(x)) {
+                        day_views.get(x).performClick();
+                    }
+                    calendarUsage.hourSelected(y);
+                } else {
+                    if (clickedHourView != view) {
+                        clickedHourView.setBackgroundResource(R.drawable.edge_view);
                         view.setBackgroundResource(R.drawable.clicked_edge_view);
-                        already_click_hour = view;
-                    }else{
+                        clickedHourView = view;
+
+                        if (clickedDayView == null || clickedDayView != day_views.get(x)) {
+                            day_views.get(x).performClick();
+                        }
+                        calendarUsage.hourSelected(y);
+                    } else {
+                        clickedHourView = null;
                         view.setBackgroundResource(R.drawable.edge_view);
-                        day_isClicked = !day_isClicked;
-                        already_click_hour = null;
+                        calendarUsage.hourDeselected();
                     }
                 }
             }
         });
         recyclableTextView.setBackgroundResource(R.drawable.edge_view);
-
         return recyclableTextView;
     }
 
@@ -218,8 +262,24 @@ public class CalendarFragment extends Fragment implements ViewTreeObserver.OnGlo
     public void onGlobalLayout() {
         try {
             fixed_rows.setPadding(fixed_margin_view.getWidth(), 0, 0, 0);
-        }catch(Exception e){
+        } catch (Exception e) {
             Log.e("Fragment", e.getMessage());
         }
     }
+
+    public void clearSelect() {
+        if (clickedDayView != null) {
+            clickedDayView.setBackgroundColor(Color.WHITE);
+            clickedDayView = null;
+            calendarUsage.dayDeselected();
+        }
+
+        if (clickedHourView != null) {
+            clickedHourView.setBackgroundResource(R.drawable.edge_view);
+            clickedHourView = null;
+            calendarUsage.hourDeselected();
+        }
+
+    }
+
 }

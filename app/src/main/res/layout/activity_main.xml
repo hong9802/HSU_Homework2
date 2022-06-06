@@ -98,9 +98,26 @@
         </TableRow>
     </TableLayout>
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/fragment"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-    />
+        android:layout_height="match_parent">
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/fragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true"
+            android:src="@android:drawable/ic_input_add"
+            android:contentDescription="일정 추가"
+            android:layout_margin="16dp" />
+    </RelativeLayout>
+
+
 </LinearLayout>

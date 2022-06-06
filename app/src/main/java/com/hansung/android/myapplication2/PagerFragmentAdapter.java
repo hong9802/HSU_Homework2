@@ -8,20 +8,32 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 import java.util.Calendar;
+import java.util.HashMap;
 
 public class PagerFragmentAdapter extends FragmentStateAdapter {
     private final FragmentActivity activity;
     public final int MIDDLE_POSITION = Integer.MAX_VALUE / 2;
-    public PagerFragmentAdapter(FragmentActivity fragmentActivity){
+    private HashMap<Integer, CalendarFragment> fragments = new HashMap<>();
+    private ICalendarUsage usage;
+
+    public PagerFragmentAdapter(FragmentActivity fragmentActivity, ICalendarUsage usage){
         super(fragmentActivity);
         activity = fragmentActivity;
+        this.usage = usage;
     }
 
     @NonNull
     @Override
     public Fragment createFragment(int position) {
         Calendar current = getCurrentWeek(position);
-        return new CalendarFragment(activity.getApplicationContext(), current);
+
+        CalendarFragment fragment = new CalendarFragment(activity.getApplicationContext(), current, usage);
+        fragments.put(position, fragment);
+        return fragment;
+    }
+
+    public Fragment getFragment(int position) {
+        return fragments.get(position);
     }
 
     @Override
